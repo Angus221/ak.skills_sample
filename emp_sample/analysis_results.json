@@ -1,0 +1,130 @@
+{
+    "position": "前端开发",
+    "candidates": [
+        {
+            "name": "张伟",
+            "file_name": "张伟_前端开发_5年经验",
+            "basic_info": {
+                "gender": "男",
+                "age": "28",
+                "education": "硕士",
+                "school": "浙江大学",
+                "major": "计算机科学与技术",
+                "work_years": "5年",
+                "phone": "13800138001",
+                "email": "zhangwei@example.com"
+            },
+            "scores": {
+                "education_score": 14,
+                "experience_score": 18,
+                "skill_match_score": 24,
+                "project_score": 19,
+                "stability_score": 9,
+                "potential_score": 9,
+                "total_score": 93
+            },
+            "evaluation": "核心优势：浙大硕士+字节/阿里双大厂背景，技术栈全面且深入，精通React/Vue/TypeScript，有微前端架构设计和性能优化的丰富实战经验，带过小团队。主要不足：工作经历仅2段，跨度合理但缺乏更多元化的行业视角。整体评估：综合素质极高的候选人，学历和技术能力均为顶尖水平，项目经验含金量高（千万级数据大屏、微前端改造），强烈推荐。",
+            "recommendation": "推荐"
+        },
+        {
+            "name": "李娜",
+            "file_name": "李娜_前端开发_3年经验",
+            "basic_info": {
+                "gender": "女",
+                "age": "26",
+                "education": "本科",
+                "school": "华中科技大学",
+                "major": "软件工程",
+                "work_years": "3年",
+                "phone": "13900139002",
+                "email": "lina@example.com"
+            },
+            "scores": {
+                "education_score": 11,
+                "experience_score": 14,
+                "skill_match_score": 17,
+                "project_score": 14,
+                "stability_score": 8,
+                "potential_score": 7,
+                "total_score": 71
+            },
+            "evaluation": "核心优势：985院校+腾讯工作经历，Vue生态掌握扎实，有单元测试（Jest覆盖率75%）和性能优化意识，代码规范好。主要不足：技术深度有限，React仅'熟悉基础用法'，缺少架构设计和复杂项目经验，技能广度偏窄（无SSR/微前端/跨端经验）。整体评估：合格的中级前端开发，满足基本岗位要求，但技术深度和广度仍有成长空间，建议作为候补人选。",
+            "recommendation": "待定"
+        },
+        {
+            "name": "王强",
+            "file_name": "王强_前端开发_7年经验",
+            "basic_info": {
+                "gender": "男",
+                "age": "32",
+                "education": "本科",
+                "school": "武汉理工大学",
+                "major": "信息管理与信息系统",
+                "work_years": "7年",
+                "phone": "13700137003",
+                "email": "wangqiang@example.com"
+            },
+            "scores": {
+                "education_score": 9,
+                "experience_score": 20,
+                "skill_match_score": 25,
+                "project_score": 20,
+                "stability_score": 8,
+                "potential_score": 10,
+                "total_score": 92
+            },
+            "evaluation": "核心优势：7年深厚前端经验，美团/拼多多/携程三段大厂经历，精通React和Vue双栈且深入源码层面，有丰富的前端架构和基础设施建设经验（组件库、CLI、监控平台），管理8人团队，了解WebAssembly等前沿技术，GitHub 700+ stars。主要不足：学历和专业相关度一般（武汉理工大学信息管理专业），3家公司平均任职2年稍短。整体评估：技术能力和项目经验极为出色的候选人，适合技术负责人或架构师角色，强烈推荐。",
+            "recommendation": "推荐"
+        },
+        {
+            "name": "赵敏",
+            "file_name": "赵敏_前端开发_1年经验",
+            "basic_info": {
+                "gender": "女",
+                "age": "24",
+                "education": "本科",
+                "school": "湖南工商大学",
+                "major": "电子商务",
+                "work_years": "1年",
+                "phone": "13600136004",
+                "email": "zhaomin@example.com"
+            },
+            "scores": {
+                "education_score": 5,
+                "experience_score": 5,
+                "skill_match_score": 7,
+                "project_score": 5,
+                "stability_score": 7,
+                "potential_score": 5,
+                "total_score": 34
+            },
+            "evaluation": "核心优势：态度积极，有学习意愿。主要不足：①不满足硬性要求（要求3年以上经验，实际仅1年）；②学历院校水平一般且专业不对口（电子商务非计算机/软件工程相关）；③技能仅停留在Vue2+ElementUI基础使用层面，不掌握TypeScript、React、SSR等核心要求项；④项目均为简单的内部系统和毕业设计，缺乏复杂度。整体评估：经验和技能远不满足岗位要求，不推荐。",
+            "recommendation": "不推荐"
+        },
+        {
+            "name": "陈磊",
+            "file_name": "陈磊_前端开发_4年经验",
+            "basic_info": {
+                "gender": "男",
+                "age": "29",
+                "education": "本科",
+                "school": "南京大学",
+                "major": "软件工程",
+                "work_years": "4年",
+                "phone": "13500135005",
+                "email": "chenlei@example.com"
+            },
+            "scores": {
+                "education_score": 12,
+                "experience_score": 16,
+                "skill_match_score": 21,
+                "project_score": 17,
+                "stability_score": 6,
+                "potential_score": 8,
+                "total_score": 80
+            },
+            "evaluation": "核心优势：南大软件工程专业科班出身，苏宁+华为双大厂经验，精通React且熟悉Angular，具备TypeScript、SSR（Next.js）、性能优化、跨端（React Native/Taro）、单元测试等全面技能，项目含金量较高（小程序优化、权限管理系统）。主要不足：有一段仅6个月的短期工作经历（创业公司裁员），3家公司略显跳动；缺少架构设计层面的经验。整体评估：综合能力较强的中高级前端工程师，推荐录用。",
+            "recommendation": "推荐"
+        }
+    ]
+}
