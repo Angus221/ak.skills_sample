@@ -1,155 +1,138 @@
-# 🧰 AK Skills Sample — AI Agent 技能案例库
+# AK Skills Sample
 
-> 一个开源的 AI Agent 技能（Skill）案例集合，提供可直接使用的技能模板和最佳实践参考。  
-> 每个技能都是独立的、可复用的功能模块，让 AI 编程助手获得专业领域的工作能力。
+一个可直接安装到 Codex、Claude Code、Cursor 等 AI 编程助手中的 Agent Skills 示例仓库。
 
-![Skills](https://img.shields.io/badge/技能数量-1-blue)
-![Python](https://img.shields.io/badge/Python-3.8+-green?logo=python&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-yellow)
+## Skill 是什么？
 
----
+Skill 是给 AI Agent 使用的可复用能力包。它把一类任务需要遵循的说明、工作流程、参考资料和脚本放在同一个目录中，让 Agent 在遇到对应任务时知道应该如何稳定地完成。
 
-## 💡 什么是 Skill（技能）？
+一个 Skill 通常包含：
 
-**Skill** 是一种可插拔的能力扩展包，用于增强 AI Agent 在特定领域的表现。每个 Skill 包含：
-
-| 组成部分 | 说明 |
-|:---|:---|
-| `SKILL.md` | 核心指令文件，定义技能的触发条件、工作流程和操作规范 |
-| `scripts/` | 可执行的工具脚本（Python/Bash 等），提供确定性的数据处理能力 |
-| `resources/` | 领域知识文档，为 AI 提供专业参考依据 |
-
-> 简单来说：**你告诉 AI「做什么」，Skill 教会 AI「怎么做」。**
-
----
-
-## 📦 技能列表
-
-| 技能 | 目录 | 描述 | 状态 |
-|:---|:---|:---|:---:|
-| 📋 [简历分析与评估](#-简历分析与评估-resume-analyzer) | `skills/resume-analyzer/` | 批量分析 PDF 简历，多维度打分，生成 Excel 报告 | ✅ 可用 |
-| 🔜 *更多技能开发中...* | — | — | — |
-
----
-
-## 📋 简历分析与评估 (resume-analyzer)
-
-### 功能概述
-
-自动读取 PDF 简历 → 根据岗位要求多维度评分 → 生成结构化 Excel 报告。
-
-```
-📄 简历 PDF ──→ 🧠 AI 分析评分 ──→ 📊 Excel 评估报告
-                     ↑
-               📋 岗位要求文档
+```text
+skill-name/
+├── SKILL.md       # 必需：用途、触发条件和执行流程
+├── scripts/       # 可选：可执行脚本
+├── references/    # 可选：协议、格式和参考资料
+├── assets/        # 可选：页面、图片和静态资源
+└── agents/        # 可选：Agent 展示和运行配置
 ```
 
-### 核心能力
+安装后，Agent 可以通过两种方式使用 Skill：
 
-- 🔍 **智能解析** — 自动提取简历中的姓名、学历、技能、工作经历等关键信息
-- 📊 **六维评分** — 学历背景(15分) + 工作经验(20分) + 技能匹配(25分) + 项目经验(20分) + 稳定性(10分) + 发展潜力(10分) = 满分100分
-- 🎯 **岗位对标** — 内置 5 个岗位模板，支持自定义扩展
-- 📁 **批量处理** — 支持单个文件或整个文件夹
-- 📈 **专业报告** — 带格式化样式、颜色标注和汇总统计的 Excel 报告
+- 显式调用：在 Codex 中输入 `$ask-ui`，明确要求使用该技能。
+- 自动触发：当任务与 `SKILL.md` 中的 `description` 匹配时，由 Agent 自动选择。
 
-### 内置岗位模板
+## Ask UI
 
-| 岗位 | 核心考察点 |
-|:---|:---|
-| 产品经理 | 需求分析、产品规划、项目推动、数据分析 |
-| 前端开发 | React/Vue、TypeScript、CSS、工程化、性能优化 |
-| Java工程师 | JVM、Spring生态、数据库、分布式、微服务 |
-| 测试工程师 | 测试方法论、自动化测试、接口测试、性能测试 |
-| 项目经理 | 项目管理、敏捷实践、团队管理、沟通协调 |
+[`ask-ui`](skills/ask-ui/) 是一个面向 Agent 工作流的本地交互式提问工具。
 
-> 💡 自定义岗位：在 `resources/` 下新建 `岗位名称.md`，参照已有模板编写即可。
+当 Agent 一次需要确认多个相互独立的问题时，Ask UI 会把问题渲染成浏览器表单，预选推荐答案，并在用户提交后将结构化 JSON 结果返回给正在等待的 Agent。它适合需求澄清、方案配置、头脑风暴、计划制定和压力测试等场景。
 
-### 推荐等级
+![Ask UI 界面](skills/ask-ui/assets/qa/implementation-light.png)
 
-| 等级 | 分数 | 含义 |
-|:---:|:---:|:---|
-| ✅ 推荐 | ≥ 75 | 综合素质优秀，建议进入面试 |
-| ⏳ 待定 | 60-74 | 有一定潜力，建议进一步评估 |
-| ❌ 不推荐 | < 60 | 与岗位要求差距较大 |
+### 它解决什么问题？
 
----
+普通聊天适合逐个追问，但连续回答多项配置时容易遗漏上下文。Ask UI 将一轮中的多个独立问题集中展示，并保留 Session 和 Round 信息，使 Agent 可以：
 
-## 🚀 如何使用
+- 一次收集多个答案，减少来回对话
+- 为每个问题预选推荐项，同时允许用户修改
+- 将问题和答案保存为便携 JSON
+- 在同一任务中延续多轮提问，不覆盖历史答案
+- 在前台等待中断时恢复已经提交的会话
 
-### 1. 克隆仓库
+只有一个问题，或者后续问题依赖前一题答案时，仍应直接在对话中逐个询问。
+
+## 安装 Ask UI
+
+安装前请确保终端可以运行 `node` 和 `npx`。
+
+### 推荐：全局安装到 Codex
+
+复制下面的命令并在任意终端中运行：
 
 ```bash
-git clone https://github.com/Angus221/ak.skills_sample.git
+npx --yes skills@latest add Angus221/ak.skills_sample --skill ask-ui --global --agent codex --yes
 ```
 
-### 2. 安装依赖
+全局安装后，Ask UI 可以在不同项目中使用。
+
+### 仅安装到当前项目
+
+进入目标项目目录后运行：
 
 ```bash
-pip install pdfplumber openpyxl
+npx --yes skills@latest add Angus221/ak.skills_sample --skill ask-ui --agent codex --yes
 ```
 
-### 3. 将技能集成到你的 AI Agent 工具中
+项目级安装会将技能放入当前项目的 `.agents/skills/`，便于跟随项目共享。
 
-将 `skills/` 目录下的技能文件夹复制到你的 AI 编程助手的技能目录中。不同工具的技能目录位置可能不同，请参考对应文档。
+### 交互式安装
 
-### 4. 用自然语言触发
-
-集成后，只需用自然语言对 AI 说：
-
-```
-帮我分析 D:\resumes 下的简历，目标岗位是前端开发
-```
-
-AI 将自动完成：读取简历 → 加载岗位要求 → 逐份打分 → 生成 Excel 报告。
-
-### 5. 也可以单独使用脚本
+如果希望由 CLI 自动检测本机的 AI Agent，并在安装过程中选择范围和安装方式：
 
 ```bash
-# 读取 PDF 简历（输出 JSON）
-python skills/resume-analyzer/scripts/read_pdf.py /path/to/resumes/
-
-# 生成 Excel 报告
-python skills/resume-analyzer/scripts/write_excel.py output.xlsx --input results.json
+npx skills@latest add Angus221/ak.skills_sample --skill ask-ui
 ```
 
----
+### 检查是否安装成功
 
-## 📂 项目结构
-
-```
-ak.skills_sample/
-├── 📄 README.md                              # 项目说明
-├── 📂 skills/                                # 技能集合
-│   └── 📂 resume-analyzer/                   # 简历分析技能
-│       ├── 📄 SKILL.md                       # 技能核心文档
-│       ├── 📂 scripts/                       # 工具脚本
-│       │   ├── 🐍 read_pdf.py               # PDF 读取工具
-│       │   └── 🐍 write_excel.py            # Excel 写入工具
-│       └── 📂 resources/                     # 岗位要求文档
-│           ├── 产品经理.md
-│           ├── 前端开发.md
-│           ├── Java工程师.md
-│           ├── 测试工程师.md
-│           └── 项目经理.md
-└── 📂 emp_sample/                            # 示例数据
-    ├── 📄 5 份模拟简历 PDF
-    ├── 📄 analysis_results.json              # AI 分析结果
-    └── 📊 简历分析报告.xlsx                   # 生成的 Excel 报告
+```bash
+npx skills@latest list --global --agent codex
 ```
 
----
+如果 `ask-ui` 出现在列表中，说明全局安装成功。Codex 通常会自动发现新技能；如果没有出现，请重启 Codex。
 
-## 🤝 贡献
+## 使用 Ask UI
 
-欢迎贡献新的技能！请参考以下规范：
+安装后，可以直接向 Codex 描述一个包含多个待确认事项的任务：
 
-1. 每个技能放在 `skills/技能名称/` 目录下
-2. 必须包含 `SKILL.md` 文件，使用 YAML frontmatter 定义 `name` 和 `description`
-3. 工具脚本放在 `scripts/`，参考文档放在 `resources/`
-4. 提交 PR 时请附带示例数据和使用说明
+```text
+帮我规划这个产品功能，把需要确认的问题用 Ask UI 一次问我。
+```
 
----
+也可以显式调用：
 
-## 📄 许可证
+```text
+$ask-ui 请把这几个配置项整理成表单让我选择。
+```
 
-本项目采用 [MIT](LICENSE) 许可证开源。
+Ask UI 会启动本地页面并等待提交。提交后，Agent 会直接读取答案并继续原任务。
+
+## 更新技能
+
+```bash
+npx skills@latest update ask-ui --global --yes
+```
+
+## 仓库中的其他技能
+
+| 技能 | 目录 | 用途 |
+| --- | --- | --- |
+| Ask UI | [`skills/ask-ui/`](skills/ask-ui/) | 将多个独立问题渲染为本地交互表单，并返回结构化答案 |
+| Resume Analyzer | [`skills/resume-analyzer/`](skills/resume-analyzer/) | 批量读取 PDF 简历，按岗位要求评分并生成 Excel 报告 |
+
+## 开发与验证
+
+验证 Ask UI：
+
+```bash
+node skills/ask-ui/scripts/self-test.mjs
+```
+
+查看仓库中可被 `skills` CLI 发现的技能：
+
+```bash
+npx --yes skills@latest add . --list
+```
+
+创建问题 JSON 前，请阅读 [`skills/ask-ui/references/schema.md`](skills/ask-ui/references/schema.md)。完整运行规范见 [`skills/ask-ui/SKILL.md`](skills/ask-ui/SKILL.md)。
+
+## 参考资料
+
+- [OpenAI：Build skills](https://developers.openai.com/codex/skills)
+- [skills CLI 文档](https://www.skills.sh/docs/cli)
+- [skills CLI GitHub 仓库](https://github.com/vercel-labs/skills)
+
+## 许可证
+
+当前仓库未包含 `LICENSE` 文件。如需以特定开源许可证发布，请在仓库根目录补充对应许可证文件。
