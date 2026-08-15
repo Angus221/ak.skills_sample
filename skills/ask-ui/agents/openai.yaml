@@ -1,4 +1,4 @@
 interface:
   display_name: "Ask UI"
-  short_description: "把多组 Agent 问题转成可直接返回、可恢复续接的本地交互表单"
-  default_prompt: "Use $ask-ui to present this round of independent questions in a local form, wait for submission, and continue from the returned JSON."
+  short_description: "把多轮问题变成支持逐题补充、可恢复续接的本地交互表单"
+  default_prompt: "Use $ask-ui to present this round of independent questions in a local form, collect optional per-question supplements, wait for submission, and continue from the returned JSON."

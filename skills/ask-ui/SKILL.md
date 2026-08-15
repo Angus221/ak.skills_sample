@@ -1,6 +1,6 @@
 ---
 name: ask-ui
-description: Render two or more independent questions from an Agent workflow as a local interactive form, preselect recommended answers, save responses as portable JSON, and return submitted answers directly to the waiting Agent command. Use for grilling, brainstorming, requirement clarification, configuration, planning, or any workflow that needs to ask multiple questions at once. Also use the manual recovery path when the user says “已提交”, “提交好了”, or “答完了” after an active Ask UI round.
+description: Render independent questions from an Agent workflow as a local interactive form, preselect recommended answers, collect an optional supplement for every question, save responses as portable JSON, and return submitted answers directly to the waiting Agent command. Use for grill-me, grill-with-docs, brainstorming, requirement clarification, configuration, planning, or any other workflow that needs user confirmation or question collection; explicitly invoke Ask UI when one round contains more than two questions. Also use the manual recovery path when the user says “已提交”, “提交好了”, or “答完了” after an active Ask UI round.
 ---
 
 # Ask UI
@@ -10,6 +10,8 @@ Use Ask UI as a presentation and persistence adapter. Keep question generation a
 ## Decide whether to use the UI
 
 Use the UI when the current round contains at least two independent questions that the user can answer now. Keep dependent questions for a later round. Ask a single question directly in the conversation.
+
+Always use the UI for `grill-me`, `grill-with-docs`, brainstorming, or another confirmation and question-collection workflow when a round contains more than two questions.
 
 If the local server or browser cannot start, fall back to the calling workflow's normal text format.
 
@@ -27,6 +29,8 @@ If the local server or browser cannot start, fall back to the calling workflow's
 5. The command writes readiness details and the local URL to stderr, opens the form, and waits. Do not end the Agent turn or ask the user to reply “已提交”.
 6. After the user submits, parse the single JSON result written to stdout and continue the originating workflow immediately.
 7. If more independent questions are needed, call `ask` again with the same `sessionId` and `basedOnRound` set to the returned round. When no further questions remain, complete the session.
+
+The first direct round opens the browser. Follow-up rounds in the same Session reuse the persistent server, stable URL, and existing browser page; the page detects and selects the new Round automatically. If the user closed that page, pass `--open` once to reopen it.
 
 Use `--no-open` only when browser opening is managed separately. Use `--port <number>` only when a fixed localhost port is required.
 

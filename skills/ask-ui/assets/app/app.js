@@ -2,6 +2,7 @@ const app = document.querySelector('#app');
 const toast = document.querySelector('#toast');
 
 const OTHER_OPTION_ID = '__other__';
+const SUPPLEMENTARY_TEXT_MAX_LENGTH = 2000;
 const THEME_STORAGE_KEY = 'ask-ui-theme';
 const sessionId = decodeURIComponent(location.pathname.split('/').filter(Boolean).at(-1) || '');
 const token = new URLSearchParams(location.search).get('token') || '';
@@ -14,6 +15,8 @@ let saveStatusElement = null;
 let answeredCountElement = null;
 let lastUpdatedAt = null;
 let submitting = false;
+let submissionConfirmationTimer = null;
+let submissionConfirmationInterval = null;
 
 function element(tag, className = '', text = '') {
   const value = document.createElement(tag);
@@ -67,12 +70,14 @@ function defaultAnswer(question) {
       questionId: question.id,
       selectedOptionIds: [],
       customText: question.recommendedDraft || '',
+      supplementaryText: '',
     };
   }
   return {
     questionId: question.id,
     selectedOptionIds: [...(question.recommendedOptionIds || [])],
     customText: '',
+    supplementaryText: '',
   };
 }
 
@@ -80,6 +85,7 @@ function normalizeLegacyOther(answer, question) {
   const normalized = structuredClone(answer);
   normalized.selectedOptionIds ||= [];
   normalized.customText ||= '';
+  normalized.supplementaryText ||= '';
   if (
     question.type !== 'text'
     && question.allowOther
@@ -105,7 +111,12 @@ function answersForRound(round) {
 function answerFor(questionId) {
   let answer = draftAnswers.find((item) => item.questionId === questionId);
   if (!answer) {
-    answer = { questionId, selectedOptionIds: [], customText: '' };
+    answer = {
+      questionId,
+      selectedOptionIds: [],
+      customText: '',
+      supplementaryText: '',
+    };
     draftAnswers.push(answer);
   }
   return answer;
@@ -128,7 +139,9 @@ function displayAnswer(question, answer) {
   if (answer.customText?.trim() && !selected.includes(OTHER_OPTION_ID)) {
     parts.push(question.type === 'text' ? answer.customText.trim() : `其他：${answer.customText.trim()}`);
   }
-  return parts.length ? parts.join('、') : '未填写';
+  const primary = parts.length ? parts.join('、') : '未填写';
+  const supplement = answer.supplementaryText?.trim();
+  return supplement ? `${primary}；补充：${supplement}` : primary;
 }
 
 function selectionCount(question, answer) {
@@ -351,6 +364,108 @@ function renderTextQuestion(card, question, answer, editable) {
   card.append(input, counter);
 }
 
+function renderSupplementaryInput(card, question, answer) {
+  const field = element('div', 'supplement-field');
+  const trigger = element('button', 'supplement-trigger');
+  const triggerIcon = element('span', 'supplement-trigger-icon', '+');
+  const triggerText = element('span', 'supplement-trigger-text');
+  const panel = element('div', 'supplement-panel');
+  const heading = element('div', 'supplement-heading');
+  const inputId = `supplement-${question.id}`;
+  const helperId = `${inputId}-helper`;
+  const panelId = `${inputId}-panel`;
+  const label = element('label', 'supplement-label', '补充说明');
+  const optional = element('span', 'supplement-optional', '选填');
+  const counter = element('span', 'supplement-counter');
+  const helper = element(
+    'p',
+    'supplement-helper',
+    '可补充限制条件、背景或偏好，不会改变上方已选答案。',
+  );
+  const input = document.createElement('textarea');
+
+  trigger.type = 'button';
+  trigger.setAttribute('aria-controls', panelId);
+  trigger.append(triggerIcon, triggerText);
+  panel.id = panelId;
+  label.htmlFor = inputId;
+  label.append(' ', optional);
+  input.id = inputId;
+  input.className = 'supplement-input';
+  input.rows = 2;
+  input.maxLength = SUPPLEMENTARY_TEXT_MAX_LENGTH;
+  input.placeholder = '例如：仅适用于首期版本，后续再扩展';
+  input.value = answer.supplementaryText || '';
+  input.setAttribute('aria-describedby', helperId);
+  helper.id = helperId;
+
+  const setExpanded = (expanded, focusInput = false) => {
+    trigger.setAttribute('aria-expanded', String(expanded));
+    trigger.classList.toggle('expanded', expanded);
+    trigger.classList.toggle('has-content', Boolean(answer.supplementaryText?.trim()));
+    triggerIcon.textContent = expanded ? '−' : '+';
+    triggerText.textContent = answer.supplementaryText?.trim()
+      ? (expanded ? '收起补充说明' : '编辑补充说明')
+      : (expanded ? '收起补充说明' : '添加补充说明');
+    panel.hidden = !expanded;
+    if (expanded && focusInput) input.focus();
+  };
+
+  const updateCounter = () => {
+    counter.textContent = `${input.value.length}/${input.maxLength}`;
+  };
+  input.addEventListener('input', () => {
+    answer.supplementaryText = input.value;
+    updateCounter();
+    setExpanded(true);
+    scheduleDraftSave();
+  });
+  trigger.addEventListener('click', () => {
+    const expanded = trigger.getAttribute('aria-expanded') === 'true';
+    setExpanded(!expanded, !expanded);
+  });
+  updateCounter();
+  heading.append(label, counter);
+  panel.append(heading, input, helper);
+  field.append(trigger, panel);
+  setExpanded(Boolean(answer.supplementaryText?.trim()));
+  card.append(field);
+}
+
+function showSubmissionConfirmation() {
+  document.querySelector('.submission-overlay')?.remove();
+  clearTimeout(submissionConfirmationTimer);
+  clearInterval(submissionConfirmationInterval);
+
+  const overlay = element('div', 'submission-overlay');
+  const card = element('div', 'submission-confirmation');
+  const icon = element('span', 'submission-confirmation-icon', '✓');
+  const copy = element('div', 'submission-confirmation-copy');
+  const title = element('strong', 'submission-confirmation-title', '已提交给 Agent');
+  const message = element('p', 'submission-confirmation-message', '答案已安全保存，正在等待 Agent 回复。');
+  const countdown = element('span', 'submission-confirmation-countdown', '此提示将在 5 秒后关闭');
+  let remaining = 5;
+
+  overlay.setAttribute('role', 'status');
+  overlay.setAttribute('aria-live', 'assertive');
+  overlay.setAttribute('aria-atomic', 'true');
+  icon.setAttribute('aria-hidden', 'true');
+  copy.append(title, message, countdown);
+  card.append(icon, copy);
+  overlay.append(card);
+  document.body.append(overlay);
+
+  submissionConfirmationInterval = setInterval(() => {
+    remaining -= 1;
+    if (remaining > 0) countdown.textContent = `此提示将在 ${remaining} 秒后关闭`;
+  }, 1000);
+  submissionConfirmationTimer = setTimeout(() => {
+    clearInterval(submissionConfirmationInterval);
+    overlay.classList.add('leaving');
+    setTimeout(() => overlay.remove(), 180);
+  }, 5000);
+}
+
 function renderQuestion(question, index, editable, submittedAnswers) {
   const card = element('section', 'question-card');
   const number = element('span', 'question-number', `Q${index + 1}`);
@@ -370,6 +485,7 @@ function renderQuestion(question, index, editable, submittedAnswers) {
   if (editable) {
     if (question.type === 'text') renderTextQuestion(body, question, answer, true);
     else renderChoiceQuestion(body, question, answer, true);
+    renderSupplementaryInput(body, question, answer);
   } else {
     body.append(element('div', 'history-answer', displayAnswer(question, answer)));
   }
@@ -420,7 +536,7 @@ async function submitRound(round, submitButton) {
         }),
       },
     );
-    showToast('本轮答案已提交');
+    showSubmissionConfirmation();
     await loadBundle(true);
   } catch (error) {
     showToast(error.message);

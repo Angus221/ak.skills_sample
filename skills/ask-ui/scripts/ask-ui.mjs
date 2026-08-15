@@ -19,6 +19,7 @@ const APP_ROOT = path.join(SKILL_ROOT, 'assets', 'app');
 const SCHEMA_VERSION = '1.0';
 const MAX_BODY_BYTES = 1_048_576;
 const OTHER_OPTION_ID = '__other__';
+const SUPPLEMENTARY_TEXT_MAX_LENGTH = 2000;
 
 function now() {
   return new Date().toISOString();
@@ -399,10 +400,12 @@ function normalizeAnswer(answer, question) {
     ? [...new Set(answer.selectedOptionIds.map(String))]
     : [];
   const customText = String(answer?.customText || '');
+  const supplementaryText = String(answer?.supplementaryText || '');
   return {
     questionId: question.id,
     selectedOptionIds: selected,
     customText,
+    supplementaryText,
   };
 }
 
@@ -413,6 +416,9 @@ function validateAnswers(questionSet, rawAnswers, { partial = false } = {}) {
   const errors = [];
   const answers = questionSet.questions.map((question) => {
     const answer = normalizeAnswer(answerMap.get(question.id), question);
+    if (answer.supplementaryText.length > SUPPLEMENTARY_TEXT_MAX_LENGTH) {
+      errors.push(`${question.title} supplement exceeds ${SUPPLEMENTARY_TEXT_MAX_LENGTH} characters`);
+    }
     if (question.type === 'text') {
       if (!partial && question.required && !answer.customText.trim()) {
         errors.push(`${question.title} is required`);
@@ -803,7 +809,10 @@ export async function startHttpServer({
               }
             }, 0);
           }
-          if (enableWake) {
+          const submittedRound = result.session.rounds.find(
+            (round) => round.roundNumber === roundNumber,
+          );
+          if (enableWake && submittedRound?.deliveryMode !== 'direct') {
             setTimeout(() => {
               triggerWake(dataRoot, sessionId, roundNumber).catch(() => {});
             }, 0);
@@ -847,7 +856,7 @@ async function serverIsAlive(info) {
   }
 }
 
-async function ensureServer(dataRoot) {
+async function ensureServer(dataRoot, { port = 0 } = {}) {
   const serverFile = path.join(dataRoot, 'server.json');
   const existing = await readJson(serverFile, null);
   if (await serverIsAlive(existing)) return existing;
@@ -855,7 +864,7 @@ async function ensureServer(dataRoot) {
   const token = randomBytes(24).toString('hex');
   const child = spawn(
     process.execPath,
-    [SCRIPT_FILE, 'serve', '--data-dir', dataRoot, '--port', '0', '--token', token],
+    [SCRIPT_FILE, 'serve', '--data-dir', dataRoot, '--port', String(Number(port) || 0), '--token', token],
     { detached: true, stdio: 'ignore', windowsHide: true },
   );
   child.unref();
@@ -867,6 +876,20 @@ async function ensureServer(dataRoot) {
     if (info?.token === token && await serverIsAlive(info)) return info;
   }
   throw new Error('Ask UI server did not start');
+}
+
+async function waitForRoundSubmission(dataRoot, sessionId, roundNumber, signal) {
+  while (!signal.aborted) {
+    const session = await readSession(dataRoot, sessionId);
+    const round = session.rounds.find((item) => item.roundNumber === roundNumber);
+    if (!round) throw new Error(`Round ${roundNumber} not found`);
+    if (['submitted', 'processed'].includes(round.status)) return round;
+    if (session.status !== 'active') {
+      throw new Error(`Ask UI session is ${session.status}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw signal.reason || new Error('Ask UI wait interrupted');
 }
 
 function openBrowser(url) {
@@ -899,7 +922,7 @@ function print(value) {
 
 function help() {
   process.stdout.write(`Ask UI\n\n`);
-  process.stdout.write(`  ask --input <file> [--data-dir <dir>] [--port <number>] [--no-open]\n`);
+  process.stdout.write(`  ask --input <file> [--data-dir <dir>] [--port <number>] [--open] [--no-open]\n`);
   process.stdout.write(`  create --input <file> [--data-dir <dir>] [--no-open] [--no-serve]\n`);
   process.stdout.write(`  serve [--data-dir <dir>] [--port <number>] [--token <token>]\n`);
   process.stdout.write(`  resume [--session <id>] [--data-dir <dir>]\n`);
@@ -919,26 +942,10 @@ export async function main(argv = process.argv.slice(2)) {
       cwd: process.cwd(),
       deliveryMode: 'direct',
     });
-    let settleSubmission;
-    let rejectSubmission;
-    const submitted = new Promise((resolve, reject) => {
-      settleSubmission = resolve;
-      rejectSubmission = reject;
-    });
-    const started = await startHttpServer({
-      dataRoot,
-      port: Number(args.port) || 0,
-      persistServerInfo: false,
-      enableWake: false,
-      onSubmitted: (event) => {
-        if (
-          event.sessionId === created.sessionId
-          && event.roundNumber === created.roundNumber
-        ) settleSubmission(event);
-      },
-    });
-    const url = `http://127.0.0.1:${started.info.port}/session/${encodeURIComponent(created.sessionId)}?token=${encodeURIComponent(started.info.token)}`;
-    const interrupt = (signal) => rejectSubmission(
+    const server = await ensureServer(dataRoot, { port: Number(args.port) || 0 });
+    const url = `http://127.0.0.1:${server.port}/session/${encodeURIComponent(created.sessionId)}?token=${encodeURIComponent(server.token)}`;
+    const abortController = new AbortController();
+    const interrupt = (signal) => abortController.abort(
       new Error(`Ask UI wait interrupted by ${signal}; saved session data was preserved`),
     );
     const onSigint = () => interrupt('SIGINT');
@@ -947,16 +954,22 @@ export async function main(argv = process.argv.slice(2)) {
     process.once('SIGTERM', onSigterm);
     process.stderr.write(`Ask UI ready at ${url}\n`);
     process.stderr.write(`Waiting for round ${created.roundNumber} submission; data is saved under ${dataRoot}\n`);
-    if (!args['no-open']) openBrowser(url);
+    const shouldOpen = !args['no-open'] && (Boolean(args.open) || created.roundNumber === 1);
+    if (shouldOpen) openBrowser(url);
+    else if (!args['no-open']) {
+      process.stderr.write(`Reusing the existing Ask UI browser page for round ${created.roundNumber}; use --open if it was closed.\n`);
+    }
     try {
-      await submitted;
-      // Let the browser reload the now read-only round before closing the temporary server.
-      await new Promise((resolve) => setTimeout(resolve, 750));
+      await waitForRoundSubmission(
+        dataRoot,
+        created.sessionId,
+        created.roundNumber,
+        abortController.signal,
+      );
       print(await submittedRoundResult(dataRoot, created.sessionId, created.roundNumber));
     } finally {
       process.removeListener('SIGINT', onSigint);
       process.removeListener('SIGTERM', onSigterm);
-      await new Promise((resolve) => started.server.close(resolve));
     }
     return;
   }

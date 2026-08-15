@@ -98,12 +98,14 @@ The CLI generates `sessionId` and `roundNumber` when omitted. Reuse `sessionId` 
     {
       "questionId": "q1",
       "selectedOptionIds": ["dashboard"],
-      "customText": ""
+      "customText": "",
+      "supplementaryText": "希望首页优先展示今天的任务。"
     },
     {
       "questionId": "q3",
       "selectedOptionIds": [],
-      "customText": "每天使用至少两次。"
+      "customText": "每天使用至少两次。",
+      "supplementaryText": ""
     }
   ]
 }
@@ -111,16 +113,19 @@ The CLI generates `sessionId` and `roundNumber` when omitted. Reuse `sessionId` 
 
 `answers.json` becomes immutable after submission. Create a later Round for corrections.
 
+Every answer includes an optional `supplementaryText` string for context that is separate from the primary answer. The UI always presents this field and limits it to 2000 characters. For choice questions, `customText` remains reserved for the “其他” option; for text questions, it remains the primary response.
+
 ### Other option
 
 When a choice question has `allowOther: true`, store the selected “其他” option
-with the reserved id `__other__`. Supplementary text remains in `customText`:
+with the reserved id `__other__`. Custom “其他” text remains in `customText`:
 
 ```json
 {
   "questionId": "channel",
   "selectedOptionIds": ["__other__"],
-  "customText": "桌面通知"
+  "customText": "桌面通知",
+  "supplementaryText": "仅在工作日提醒。"
 }
 ```
 
