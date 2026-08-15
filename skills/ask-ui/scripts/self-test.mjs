@@ -94,12 +94,24 @@ async function runDirectAsk({ questionSet, answers, dataRoot, cwd, testDuplicate
 
   const exitCode = await exitPromise;
   assert.equal(exitCode, 0, stderr);
-  return JSON.parse(stdout);
+  return { ...JSON.parse(stdout), testReadyUrl: readyUrl };
+}
+
+async function stopDetachedServer(serverDataRoot) {
+  if (!serverDataRoot) return;
+  try {
+    const info = JSON.parse(await fs.readFile(path.join(serverDataRoot, 'server.json'), 'utf8'));
+    if (Number.isInteger(info.pid)) process.kill(info.pid, 'SIGTERM');
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  } catch (error) {
+    if (!['ENOENT', 'ESRCH'].includes(error.code)) throw error;
+  }
 }
 
 const temporaryRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'ask-ui-test-'));
 const dataRoot = path.join(temporaryRoot, 'data');
 let server;
+let directDataRoot;
 
 try {
   const first = await createRound({
@@ -199,8 +211,32 @@ try {
   );
   assert.equal(rejectedOtherResponse.status, 422);
 
+  const rejectedSupplementResponse = await fetch(
+    `${base}/api/sessions/${invalidOther.sessionId}/rounds/1/answers`,
+    {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        answers: [
+          {
+            questionId: 'restricted',
+            selectedOptionIds: ['one'],
+            customText: '',
+            supplementaryText: 'x'.repeat(2001),
+          },
+        ],
+      }),
+    },
+  );
+  assert.equal(rejectedSupplementResponse.status, 422);
+
   const answers = [
-    { questionId: 'scope', selectedOptionIds: ['personal'], customText: '' },
+    {
+      questionId: 'scope',
+      selectedOptionIds: ['personal'],
+      customText: '',
+      supplementaryText: '先覆盖个人高频场景。',
+    },
     { questionId: 'modules', selectedOptionIds: ['tasks', 'notes'], customText: '' },
     { questionId: 'context', selectedOptionIds: [], customText: '先做本地 Demo。' },
     { questionId: 'channel', selectedOptionIds: ['__other__'], customText: '桌面通知' },
@@ -225,6 +261,7 @@ try {
   const resumed = await resumeRound(dataRoot, first.sessionId);
   assert.equal(resumed.status, 'submitted');
   assert.equal(resumed.roundNumber, 1);
+  assert.equal(resumed.answers.answers[0].supplementaryText, '先覆盖个人高频场景。');
 
   await createRound({
     sessionId: first.sessionId,
@@ -252,7 +289,7 @@ try {
   const completed = await completeSession(dataRoot, first.sessionId);
   assert.equal(completed.status, 'completed');
 
-  const directDataRoot = path.join(temporaryRoot, 'direct-data');
+  directDataRoot = path.join(temporaryRoot, 'direct-data');
   const directFirst = await runDirectAsk({
     cwd: temporaryRoot,
     dataRoot: directDataRoot,
@@ -319,6 +356,7 @@ try {
     ],
   });
   assert.equal(directSecond.roundNumber, 2);
+  assert.equal(directSecond.testReadyUrl, directFirst.testReadyUrl);
   const directBundle = await loadSessionBundle(directDataRoot, directFirst.sessionId);
   assert.equal(directBundle.rounds[0].status, 'processed');
   assert.equal(directBundle.rounds[0].deliveryMode, 'direct');
@@ -327,5 +365,6 @@ try {
   process.stdout.write('ask-ui self-test passed\n');
 } finally {
   if (server) await new Promise((resolve) => server.close(resolve));
+  await stopDetachedServer(directDataRoot);
   await fs.rm(temporaryRoot, { recursive: true, force: true });
 }
